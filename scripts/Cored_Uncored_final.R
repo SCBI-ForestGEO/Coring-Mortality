@@ -1,19 +1,25 @@
 ##########################################################################
-#Mortality rates of trees cored in 2009 vs uncored trees 
-#based on mortality censuses in 2013,14,15,16 and 17
+#Mortality rates of trees cored in 2010/11 vs uncored trees surveyed in 2008
+#based on mortality censuses in 2008, coring in 2010/11 and survival to 2017 survey year
 #For use with SCBI ForestGEO grid
-#Author: Ryan Helcoski - 12/14/2017
+#Author: Ryan Helcoski - 1/25/2018
 ##########################################################################
+
+
+## run script
+
+{
 
 rm(list = ls())
 
 library(dplyr)
 library (kimisc)
+library(lubridate)
 
 #############################################################
 ##### creating wd and loading data
 # Set up working directory ####
-setwd("C:/Users/helcoskiR/Dropbox (Smithsonian)/Tree Cores/literature/effect of coring on mortality/Data/R_project")
+setwd("C:/Users/helcoskiR/Dropbox (Smithsonian)/Tree Cores/PROJECTS/effect of coring on mortality/Data/R_project")
 
 # INPUT DATA LOCATION ####
 Input_data_location <- "INPUT_FILES/"
@@ -25,8 +31,42 @@ Output_data_location <- "OUTPUT_FILES/"
 # load 2017 mortality data + trees cored and uncored. ####
 #File is csv of 2017 mortality with one extra column, Cored_2009. A 1 indicates a tree was cored a 0 indicates it was not
 cmortall <- read.csv(paste0(Input_data_location, "Mortality_Survey_2017+core2009.csv"))
+s2008 <- read.csv(paste0(Input_data_location, "scbi.stem1_tori.csv"))
+c2010 <- read.csv(paste0(Input_data_location, "SCBI_SIGEO_all_trees_cored.csv"))
 
- 
+
+
+##########################################################################
+#More precise time interval (Julian days) for trees from 2008 - 2017 and cored trees
+#add column for Cored_2009
+c2010$Cored_2009 <- 1
+
+#merge files
+m1 <- merge(cmortall, c2010, by.x= c("tag", "Cored_2009"), by.y =c("tag", "Cored_2009") , all.x=TRUE)
+m2 <- merge(m1, s2008, by.x=c("tag", "stem"), by.y=c("tag", "stem"))
+
+#convert to jdays
+m2$survey_2017 <- NA
+m2$survey_2017 <- as.Date(m2$date.x, "%m/%d/%Y")
+m2$survey_2017 <- as.numeric(m2$survey_2017)
+m2$survey_2008 <- NA
+m2$survey_2008 <- as.Date(m2$ExactDate, "%m/%d/%Y")
+m2$survey_2008 <- as.numeric(m2$survey_2008)
+m2$cored_2010 <- NA
+m2$cored_2010 <- as.Date(m2$Date_Collected, "%m/%d/%Y")
+m2$cored_2010 <- as.numeric(m2$cored_2010)
+
+#determine number of jdays since 2008 survey for all uncored, and jdays since 2010/11 for all cored
+m2$t_uncored <- ifelse (m2$Cored_2009 == 0, m2$survey_2017 - m2$survey_2008, NA)
+m2$t_cored <- ifelse (m2$Cored_2009 == 1, m2$survey_2017 - m2$cored_2010, NA)
+
+#determine new mean t_cored and t_uncored
+cored_t <- mean(m2$t_cored, na.rm=TRUE) / 365
+uncored_t <- mean(m2$t_uncored, na.rm=TRUE) / 365
+t <-cbind(cored_t,uncored_t)
+t <- as.data.frame(t)
+
+
 
 ############################################################
 ## adding columns for genus and size ####
@@ -121,12 +161,8 @@ csub3 <- csub2
 table(csub3$genus)
 csub5 = group_by(csub3, genus, size_bin)
 csub5 = summarise(csub5, total= sum(tally1))
-write.csv(csub5, "Cored_Species_Pivot.csv")
 csub6 = group_by(csub3, size_bin)
 csub6 = summarise(csub6, total= sum(tally1))
-write.csv(csub6, "Cored_Total_Pivot.csv")
-
-
 
 
 ncsub2 <- ncsub[!(ncsub$genus == "fagus" & ncsub$size_bin == 2), ]
@@ -134,7 +170,19 @@ ncsub2 <- ncsub2[!(ncsub2$genus == "ulmus" & ncsub2$size_bin == 2), ]
 table(ncsub2$genus)
 
 
-#randomly selecting desired numbers of noncored df
+
+#creating shell df uncored with proper number of rows
+
+genus <- c(rep("acer",4), rep("carya", 4), rep("fagus", 2), rep("fraxinus", 4), rep("juglans" , 4), rep("liriodendron" , 4), rep ("nyssa", 4), rep("quercus", 4), rep("tillia", 4), rep("ulmus", 2))
+size_bin <- c(rep(c(rep(1,2) , rep(2,2)), 2), rep(1,2), rep(c(rep(1,2) , rep(2,2)),6), rep(1,2))
+status.2017 <- c("A","D","A","D","A","D","A","D","A","D","A","D","A","D","A","D","A","D","A","D","A","D","A","D","A","D","A","D","A","D","A","D","A","D","A","D")
+
+pvnc4.5 <- as.data.frame(cbind(genus,size_bin,status.2017))
+
+
+#randomly selecting desired numbers of noncored df 1000x #### 
+for(i in 1:1000){
+  print(i)
 t1 <- sample.rows(subset(ncsub2, genus == "acer" & size_bin == 1), 50)
 t2 <- sample.rows(subset(ncsub2, genus == "acer" & size_bin == 2), 16)
 t3 <- sample.rows(subset(ncsub2, genus == "carya" & size_bin == 1), 396)
@@ -152,18 +200,42 @@ t14 <- sample.rows(subset(ncsub2, genus == "quercus" & size_bin == 1), 168)
 t15 <- sample.rows(subset(ncsub2, genus == "quercus" & size_bin == 2), 386)
 t16 <- sample.rows(subset(ncsub2, genus == "tillia" & size_bin == 1), 54)
 t17 <- sample.rows(subset(ncsub2, genus == "tillia" & size_bin == 2), 18)
-t18 <- sample.rows(subset(ncsub2, genus == "ulmus" & size_bin == 1), 68)
-
+t18 <- sample.rows(subset(ncsub2, genus == "ulmus" & size_bin == 1), 68) 
 #r bind, view
 ncsub3 <- rbind(t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12,t13,t14,t15,t16,t17,t18)
-ncsub3
-ncsub5 = group_by(ncsub3, genus, size_bin)
-ncsub5 = summarise(ncsub5, total= sum(tally1))
-write.csv(ncsub5, "Non-cored_Species_Pivot.csv")
-ncsub6 = group_by(ncsub3, size_bin)
-ncsub6 = summarise(ncsub6, total= sum(tally1))
-write.csv(ncsub6, "Non-Cored_Total_Pivot.csv")
+ncsub4 = group_by(ncsub3, genus, size_bin, status.2017)
+pvncsub5 = summarise(ncsub4, total = sum(tally1, na.rm=TRUE))
+pvncsub4 <-merge(pvncsub5, pvnc4.5, all=TRUE)
 
+if(i == 1){
+  total.1000.columns <- pvncsub4$total
+}else{
+  total.1000.columns <- cbind(total.1000.columns, pvncsub4$total)
+}
+
+
+}
+
+#change all NA to 0
+total.1000.columns[is.na(total.1000.columns)] <-0
+
+#mean of all columns
+ncmeans <- data.frame(Means=round(rowMeans(total.1000.columns)))
+
+#merge mean back into pvncsub4
+pvncsub4 <-cbind(pvncsub4, ncmeans)
+pvncsub4$total <-NULL
+pvncsub4 <- rename(pvncsub4, total=Means)
+pvncsub4$size_bin <- as.numeric(pvncsub4$size_bin)
+pvncsub4
+
+ncsub6 = group_by(pvncsub4, size_bin)
+ncsub6 = summarise(ncsub6, total=sum(total))
+
+
+
+ncsubtotal = group_by(pvncsub4, size_bin, status.2017)
+ncsubtotal = summarise(ncsubtotal, total=sum(total))
 
 #############################################################################
 #Pivot tables of DF1 and DF2, looking for total cored and uncored and total from each group that died by 2017####
@@ -171,29 +243,16 @@ write.csv(ncsub6, "Non-Cored_Total_Pivot.csv")
 # cored trees
 csub4 = group_by(csub3, genus, size_bin, status.2017)
 pvcsub4 = summarise(csub4, total = sum(tally1))
-write.csv(pvcsub4, "Table_Cored_Tree_Mortality.csv")
 
 csubtotal = group_by(csub3, size_bin, status.2017)
 csubtotal = summarise(csubtotal, total = sum(tally1))
-write.csv(csubtotal, "Total_Cored_Tree_Mortality.csv")
 
-
-# noncored trees
-ncsub4 = group_by(ncsub3, genus, size_bin, status.2017)
-pvncsub4 = summarise(ncsub4, total = sum(tally1))
-write.csv(pvncsub4, "Table_Non-Cored_Tree_Mortality.csv")
-
-ncsubtotal = group_by(ncsub3, size_bin, status.2017)
-ncsubtotal = summarise(ncsubtotal, total = sum(tally1))
-write.csv(ncsubtotal, "Total_Non-Cored_Tree_Mortality.csv")
 
 
 
 ##########################################################################
 # annual mortality rate, m = (1- (Nt/N0)^(1/t))x100 #### 
 
-# load in table of more precise t
-t<- read.csv("New_t_cored_uncored.csv")
 # uncorred using trees alive in 2008
 
 # cored
@@ -212,48 +271,50 @@ csub5$mort_rate <- (1-((csub5$total.y)/(csub5$total.x))^(1/t$cored_t)) * 100
 #uncored
 #total anual mortality
 ncsubalive <- ncsubtotal[!(ncsubtotal$status.2017 == "D") , ]
-nc_mort_rate <- (1-((sum(ncsubalive$total))/(sum(ncsub6$total)))^(1/t$uncored_t)) * 100
+nc_mort_rate <- (1-((sum(ncsubalive$total))/(sum(pvncsub4$total)))^(1/t$uncored_t)) * 100
 total_mort <- cbind(nc_mort_rate, c_mort_rate)
+total_mort <- as.data.frame(total_mort)
+
+
 #total by size class
 ncsub6$mort_rate <- (1-((ncsubalive$total)/(ncsub6$total))^(1/t$uncored_t)) * 100
+
+
 #total by species and size class
 ncsublivespecies <- pvncsub4[!(pvncsub4$status.2017 == "D") , ]
-ncsub5 <- merge(ncsub5, ncsublivespecies, by.x=c("genus", "size_bin"), by.y =c("genus", "size_bin") )
-ncsub5$mort_rate <- (1-((ncsub5$total.y)/(ncsub5$total.x))^(1/t$uncored_t)) * 100
+ncsubdeadspecies <- pvncsub4[!(pvncsub4$status.2017 == "A") , ]
+ncsub5 <- merge(ncsubdeadspecies, ncsublivespecies, by.x=c("genus", "size_bin"), by.y =c("genus", "size_bin") )
+ncsub5$mort_rate <- (1-((ncsub5$total.y)/(ncsub5$total.y+ncsub5$total.x))^(1/t$uncored_t)) * 100
 
 
 
 ##########################################################################
 # clean up data, prep for 95% CI ####
 #remove unecessary columns
-csub5 <- csub5[, -c(1,4,7)]
-ncsub5 <- ncsub5[, -c(1,4,6)]
-csub6 <- csub6[, -c(1,2)]
-ncsub6 <- ncsub6[, -c(1,2)]
+csub5 <- csub5[, -4]
+ncsub5 <- ncsub5[, -c(3,5)]
 
 #ninitial, nfinal
 csub5<- rename(csub5, n_initial=total.x , n_final=total.y)
-ncsub5<- rename(ncsub5, n_initial=total.x , n_final=total.y)
+ncsub5<- rename(ncsub5, n_dead=total.x , n_final=total.y)
 
 ncsubdead <- ncsubtotal[!(ncsubtotal$status.2017 == "A") , ]
 ncsub6 <- merge(ncsub6, ncsubdead, by.x="size_bin", by.y="size_bin")
 ncsub6$n_final <- ncsub6$total.x - ncsub6$total.y
-ncsub6 <- ncsub6[, -c(4,5)]
+ncsub6 <- ncsub6[, -4]
 ncsub6 <- rename(ncsub6, n_initial=total.x, n_dead=total.y)
 
 csubdead <- csubtotal[!(csubtotal$status.2017 == "A") , ]
 csub6 <- merge(csub6, csubdead, by.x="size_bin", by.y="size_bin")
 csub6$n_final <- csub6$total.x - csub6$total.y
-csub6 <- csub6[, -c(4,5)]
+csub6 <- csub6[, -4]
 csub6 <- rename(csub6, n_initial=total.x, n_dead=total.y)
 
 
 
 #bring back ndead
 csub5$n_dead <- (csub5$n_initial - csub5$n_final)
-ncsub5$n_dead <- (ncsub5$n_initial - ncsub5$n_final)
-csub6$n_dead <- (csub6$n_initial - csub6$n_final)
-ncsub6$n_dead <- (ncsub6$n_initial - ncsub6$n_final)
+ncsub5$n_initial <- (ncsub5$n_dead + ncsub5$n_final)
 
 
 #t
@@ -292,33 +353,27 @@ total_mort$type <- NULL
 
 #cored
 #fix data
-csub5$status.2017 <- NULL
 size = c("<35 dbh", ">=35 dbh")
 csub6$genus <- size
-csub6 <- rename(csub6, mort_rate = cmort)
 cored = rbind.data.frame(csub5, csub6, total_mort)
 cored = cored[-22,]
-write.csv(cored, "Cored_mortality.csv")
+
 
 
 #uncored
-ncsub5$status.2017 <- NULL
 size = c("<35 dbh", ">=35 dbh")
 ncsub6$genus <- size
 uncored = rbind.data.frame(ncsub5, ncsub6, total_mort)
 uncored = uncored[-21,]
-write.csv(uncored, "Uncored_mortality.csv")
-
 
 
 #####################################################################
-# 95% CI #####
-#test with uncored species
+# 95% CI uncored #####
 #Calculate CIS: Normal Approximation
 uncored2<-uncored[uncored$n_dead>5,]
 ntot<-nrow(uncored2)
 for (i in 1:ntot){
-  prop<-prop.test(uncored2$n_dead[i],uncored2$n_initial[i],uncored2$mort_rate[i]/100)
+  suppressWarnings( prop<-prop.test(uncored2$n_dead[i],uncored2$n_initial[i],uncored2$mort_rate[i]/100) )
   ci1<-prop$conf.int[1]*uncored2$n_initial[i]
   ci2<-prop$conf.int[2]*uncored2$n_initial[i]
   ci.lo<-100*(1-((uncored2$n_initial[i]-ci1)/uncored2$n_initial[i])^(1/uncored2$t[i]))
@@ -327,7 +382,9 @@ for (i in 1:ntot){
   if (i==1)
     props=prop
   else
-    props=rbind(props,prop)}
+    props=rbind(props,prop)} 
+
+
 
 #If ndead <= 5: Exact Binomial Test
 uncored_2<-uncored[uncored$n_dead<=5&uncored$n_dead>0,]
@@ -344,10 +401,46 @@ for (i in 1:ntots){
   else
     binoms=rbind(binoms,Binom)}
 
+
 alluncored<-rbind(props,binoms)
 a2<-merge(uncored,alluncored,all.x=T,all.y=T)
 
-write.csv(a2, "Uncored_mortality+CI.csv")
+
+write.csv(a2, "uncored_mortality+CI.csv")
+
+
+## cored
+# Exact Binomial Test due to small data subset
+
+
+
+
+cored_2<-cored[cored$n_dead>0,]
+cntots<-nrow(cored_2)
+for (i in 1:cntots){
+  cbinom<-binom.test(cored_2$n_dead[i],cored_2$n_initial[i],cored_2$mort_rate[i]/100)
+  ci1<-cbinom$conf.int[1]*cored_2$n_initial[i]
+  ci2<-cbinom$conf.int[2]*cored_2$n_initial[i]
+  ci.lo<-100*(1-((cored_2$n_initial[i]-ci1)/cored_2$n_initial[i])^(1/cored_2$t[i]))
+  ci.hi<-100*(1-((cored_2$n_initial[i]-ci2)/cored_2$n_initial[i])^(1/cored_2$t[i]))
+  cBinom=data.frame(genus=cored_2$genus[i],size_bin = cored_2$size_bin[i],n_initial=cored_2$n_initial[i], mort_rate=cored_2$mort_rate[i], n_final = cored_2$n_final[i], n_dead = cored_2$n_dead[i],ci.lo=ci.lo,ci.hi=ci.hi)
+  if (i==1)
+    cbinoms=cBinom
+  else
+    cbinoms=rbind(cbinoms,cBinom)}
+allcored<-cbinoms
+a3<-merge(cored,allcored,all.x=T,all.y=T)
+
+a3 [is.na(a3)] <- 0
+
+write.csv(a3, "cored_mortality+CI.csv")
+
+
+### t.test, just because
+t.test(ncsub5$mort_rate, csub5$mort_rate)
+
+}
+
 
 
 
