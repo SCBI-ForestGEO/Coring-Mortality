@@ -8,6 +8,8 @@
 
 ## run script
 
+
+
 {
 
 rm(list = ls())
@@ -19,7 +21,7 @@ library(lubridate)
 #############################################################
 ##### creating wd and loading data
 # Set up working directory ####
-setwd("C:/Users/helcoskiR/Dropbox (Smithsonian)/Tree Cores/PROJECTS/effect of coring on mortality/Data/R_project")
+setwd("C:/Users/helcoskir/Dropbox (Smithsonian)/effect of coring on mortality/Data/R_project")
 
 # INPUT DATA LOCATION ####
 Input_data_location <- "INPUT_FILES/"
