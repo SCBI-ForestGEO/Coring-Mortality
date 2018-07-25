@@ -21,7 +21,7 @@ library(lubridate)
 #############################################################
 ##### creating wd and loading data
 # Set up working directory ####
-setwd("C:/Users/helcoskir/Dropbox (Smithsonian)/effect of coring on mortality/Data/R_project")
+setwd(" ")
 
 # INPUT DATA LOCATION ####
 Input_data_location <- "INPUT_FILES/"
@@ -31,20 +31,20 @@ Output_data_location <- "OUTPUT_FILES/"
 
 # load data ####
 # load 2017 mortality data + trees cored and uncored. ####
-#File is csv of 2017 mortality with one extra column, Cored_2009. A 1 indicates a tree was cored a 0 indicates it was not
-cmortall <- read.csv(paste0(Input_data_location, "Mortality_Survey_2017+core2009.csv"))
-s2008 <- read.csv(paste0(Input_data_location, "scbi.stem1_tori.csv"))
+#File is csv of 2017 mortality with one extra column, Cored_2010. A 1 indicates a tree was cored a 0 indicates it was not
+cmortall <- read.csv(paste0(Input_data_location, "Mortality_Survey_2017+cored_2010.csv"))
+s2008 <- read.csv(paste0(Input_data_location, "SCBI_SIGEO_all_trees_surveyed_2008.csv"))
 c2010 <- read.csv(paste0(Input_data_location, "SCBI_SIGEO_all_trees_cored.csv"))
 
 
 
 ##########################################################################
 #More precise time interval (Julian days) for trees from 2008 - 2017 and cored trees
-#add column for Cored_2009
-c2010$Cored_2009 <- 1
+#add column for Cored_2010
+c2010$Cored_2010 <- 1
 
 #merge files
-m1 <- merge(cmortall, c2010, by.x= c("tag", "Cored_2009"), by.y =c("tag", "Cored_2009") , all.x=TRUE)
+m1 <- merge(cmortall, c2010, by.x= c("tag", "Cored_2010"), by.y =c("tag", "Cored_2010") , all.x=TRUE)
 m2 <- merge(m1, s2008, by.x=c("tag", "stem"), by.y=c("tag", "stem"))
 
 #convert to jdays
@@ -59,8 +59,8 @@ m2$cored_2010 <- as.Date(m2$Date_Collected, "%m/%d/%Y")
 m2$cored_2010 <- as.numeric(m2$cored_2010)
 
 #determine number of jdays since 2008 survey for all uncored, and jdays since 2010/11 for all cored
-m2$t_uncored <- ifelse (m2$Cored_2009 == 0, m2$survey_2017 - m2$survey_2008, NA)
-m2$t_cored <- ifelse (m2$Cored_2009 == 1, m2$survey_2017 - m2$cored_2010, NA)
+m2$t_uncored <- ifelse (m2$Cored_2010 == 0, m2$survey_2017 - m2$survey_2008, NA)
+m2$t_cored <- ifelse (m2$Cored_2010 == 1, m2$survey_2017 - m2$cored_2010, NA)
 
 #determine new mean t_cored and t_uncored
 cored_t <- mean(m2$t_cored, na.rm=TRUE) / 365
@@ -127,11 +127,11 @@ table(cmortall$status.2017)
 # creating 2 DFs ####
 # DF1, only trees cored, minus pinus and robinia ####
 # DF A filter out only those cored
-csub <- subset(cmortall, Cored_2009 == 1)
+csub <- subset(cmortall, Cored_2010 == 1)
 
 #pivot table, split into genus and size bin. Create new column for desired number of noncored needed - multiplier is 2x
 csub = group_by(csub, genus, size_bin)
-csub.table2 = summarise(csub, cored= sum(Cored_2009) , noncored_needed =sum((Cored_2009)*2))
+csub.table2 = summarise(csub, cored= sum(Cored_2010) , noncored_needed =sum((Cored_2010)*2))
 csub.table2
 
 #create tally column, each stem is just 1
@@ -140,7 +140,7 @@ csub$tally1 <- 1
 
 # DF2, uncorred trees with only possible trees to comapre to ####
 # subset of only noncored
-ncsub <- subset(cmortall, Cored_2009 == 0)
+ncsub <- subset(cmortall, Cored_2010 == 0)
 #create tally column, each stem is just 1
 ncsub$tally1 <- 1
 
