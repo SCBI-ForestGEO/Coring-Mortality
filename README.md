@@ -1,10 +1,12 @@
 # Coring-Mortality
 
-This repository contains data, code, and results from an analysis of the effect of coring on tree mortality.
+This repository contains data, code, and results from an analysis of the effect of coring on tree mortality (Helcoski et al., 
 
-This manuscript has been accepted for publication in Tree-Ring Research. 
+2018). 
 
-Final data and scripts used in analyses for this manuscript have been uploaded.
+
+## Citation
+Helcoski *et al*. 2018. No significant increase in tree mortality following coring in a temperate hardwood forest. *Tree-Ring Research*, in press.
 
 ## Contact
 
